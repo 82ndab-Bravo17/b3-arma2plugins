@@ -1,0 +1,21 @@
+<configuration plugin="dayzrestarts">
+	<settings name="commands">
+		<set name="shutdown">40</set>
+	</settings>
+	<settings name="timers">
+		<set name="no_restarts">4</set>
+		<set name="restarttime_1">00:00</set>
+		<set name="restarttime_2">06:00</set>
+		<set name="restarttime_3">12:00</set>
+		<set name="restarttime_4">18:00</set>
+	</settings>
+	<settings name="messages">
+		<set name="sched5min">Server will be doing a scheduled restart in 5 minutes...</set>
+		<set name="sched2min">Server will be doing a scheduled restart in 2 minutes...</set>
+		<set name="sched1min">Server will be doing a scheduled restart in 1 minute...</set>
+		<set name="5min">Server will be shutting down in 5 minutes...</set>
+		<set name="2min">Server will be shutting down in 2 minutes...</set>
+		<set name="1min">Server will be shutting down in 1 minute...</set>
+	</settings>
+		
+</configuration>
