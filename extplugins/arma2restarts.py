@@ -28,6 +28,7 @@ import sys
 import time
 import b3
 import os
+import datetime
 import random
 import b3.events
 import b3.plugin
@@ -66,7 +67,16 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self._msg1 = self.config.get('messages', '1min')
         except:
             pass
-            
+        
+        try:
+            self._base_dir = self.config.get('logfiles', 'base_dir')
+            self._battleye_dir = self.config.get('logfiles', 'battleye_dir')
+            self._arma_log = self.config.get('logfiles', 'arma_log')
+            self._arma_rpt = self.config.get('logfiles', 'arma_rpt')
+            self._scripts_log = self.config.get('logfiles', 'scripts_log')
+            self._vehicles_log = self.config.get('logfiles', 'vehicles_log')
+            self._execs_log = self.config.get('logfiles', 'execs_log')
+        
     def onStartup(self):
       
         # get the plugin so we can register commands
@@ -155,18 +165,21 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         self.console.write(self.console.getCommand('shutdown', ))
         self.setUpcrontab(3, 'sendRestart_bot')
         self._sched = False
+        time.sleep(5)
+        self.renamelogs()
         
     def sendRestart_bot(self):
         self.console.restart()
         
     def setUpcrontab(self, delay_in_min, func):
         current_min = time.localtime().tm_min
+        current_sec = time.localtime().tm_sec
         dlmin = current_min + delay_in_min
         if dlmin >= 60:
             dlmin -= 60
             
         func = getattr(self, func)
-        self._shortcronTab = b3.cron.OneTimeCronTab(func, 0, dlmin, '*', '*', '*', '*')
+        self._shortcronTab = b3.cron.OneTimeCronTab(func, current_sec, dlmin, '*', '*', '*', '*')
         self.debug("Setting up crontab for %s" % dlmin)
         self.console.cron + self._shortcronTab
         
@@ -204,6 +217,54 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             else:
                 client.message('Invalid parameters, you must supply a valid time, 0, 1, 2 , or 5')
 
+    def renamelogs(self):
+        org_gamelog = self._base_dir + self._arma_rpt + '.rpt'
+        org_consolelog = self._base_dir + self._arma_log + '.log'
+        org_scriptslog = self._battleye_dir + self._scripts_log + '.log'
+        org_vehicleslog = self._battleye_dir + self._vehicles_log + '.log'
+        org_execslog = self._battleye_dir + self._execs_log + '.log'
+
+
+        now = datetime.datetime.today()
+
+        str_now = now.strftime("%Y%m%d-%H%M%S")
+
+        new_logdir = self._base_dir + 'logs/' + str_now +'/'
+        new_gamelog = new_logdir + self._arma_rpt + str_now + '.rpt'
+        new_consolelog = new_logdir + self._arma_log + str_now + '.log'
+        new_scriptslog = new_logdir + self._scripts_log + str_now + '.log'
+        new_vehicleslog = new_logdir + self._vehicles_log + '_' + str_now + '.log'
+        new_execslog = new_logdir + self._execs_log + '_' + str_now + '.log'
+
+        try:
+            os.mkdir(new_logdir)
+        except Exception, err:
+            print('Error creating folder "%s" : %s' % (Exception, err))
+            return
+        
+        try:
+            os.rename(org_gamelog, new_gamelog)
+        except Exception, err:
+            self.error('Error renamimg Gamelog "%s" : %s' % (Exception, err))
+        try:
+            os.rename(org_consolelog, new_consolelog)
+        except Exception, err:
+            self.error('Error renamimg Consolelog "%s" : %s' % (Exception, err))
+        try:
+            os.rename(org_scriptslog, new_scriptslog)
+        except Exception, err:
+            self.error('Error renamimg Scriptslog "%s" : %s' % (Exception, err))
+        try:
+            os.rename(org_vehicleslog, new_vehicleslog)
+        except Exception, err:
+            self.error('Error renamimg Vehicleslog "%s" : %s' % (Exception, err))
+        try:
+            os.rename(org_execslog, new_execslog)
+        except Exception, err:
+            self.error('Error renamimg Execlog "%s" : %s' % (Exception, err))
+    
+                
+                
 if __name__ == '__main__':
     from b3.fake import fakeConsole
     import time

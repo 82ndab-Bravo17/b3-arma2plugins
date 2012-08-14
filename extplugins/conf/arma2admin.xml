@@ -1,0 +1,6 @@
+<configuration plugin="arma2admin">
+	<settings name="commands">
+		<set name="loadscripts">60</set>
+		<set name="loadevents">60</set>
+	</settings>
+</configuration>

@@ -1,4 +1,4 @@
-<configuration plugin="dayzrestarts">
+<configuration plugin="arma2restarts">
 	<settings name="commands">
 		<set name="shutdown">40</set>
 	</settings>
@@ -17,5 +17,12 @@
 		<set name="2min">Server will be shutting down in 2 minutes...</set>
 		<set name="1min">Server will be shutting down in 1 minute...</set>
 	</settings>
-		
+	<settings name="logfiles">
+		<set name="base_dir">G:/</set>
+		<set name="battleye_dir">G:/battleye/</set>
+		<set name="arma_log">server_console</set>
+		<set name="scripts_log">battleye/scripts</set>
+		<set name="vehicles_log">battleye/createvehicle</set>
+		<set name="execs_log">battleye/remoteexec</set>
+		<set name="arma_rpt">arma2oaserver</set>
 </configuration>
