@@ -25,4 +25,5 @@
 		<set name="vehicles_log">battleye/createvehicle</set>
 		<set name="execs_log">battleye/remoteexec</set>
 		<set name="arma_rpt">arma2oaserver</set>
+	</settings>
 </configuration>

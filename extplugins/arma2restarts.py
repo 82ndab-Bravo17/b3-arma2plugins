@@ -55,8 +55,8 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             for rs in range(1, self._restartcount + 1):
                 self._restarttimes.append(self.config.get('timers', 'restarttime_%s' % rs))
                 self.debug('Restart %s : %s' % (rs, self._restarttimes[rs-1]))
-        except:
-            pass
+        except Exception, err:
+            self.error('Error getting restart times "%s" : %s' % (Exception, err))
         
         try:
             self._msgSched5 = self.config.get('messages', 'sched5min')
@@ -65,8 +65,8 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self._msg5 = self.config.get('messages', '5min')
             self._msg2 = self.config.get('messages', '2min')
             self._msg1 = self.config.get('messages', '1min')
-        except:
-            pass
+        except Exception, err:
+            self.error('Error getting restart messages "%s" : %s' % (Exception, err))
         
         try:
             self._base_dir = self.config.get('logfiles', 'base_dir')
@@ -76,6 +76,8 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self._scripts_log = self.config.get('logfiles', 'scripts_log')
             self._vehicles_log = self.config.get('logfiles', 'vehicles_log')
             self._execs_log = self.config.get('logfiles', 'execs_log')
+        except Exception, err:
+            self.error('Error getting log file names "%s" : %s' % (Exception, err))
         
     def onStartup(self):
       
@@ -165,7 +167,7 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         self.console.write(self.console.getCommand('shutdown', ))
         self.setUpcrontab(3, 'sendRestart_bot')
         self._sched = False
-        time.sleep(5)
+        time.sleep(10)
         self.renamelogs()
         
     def sendRestart_bot(self):
