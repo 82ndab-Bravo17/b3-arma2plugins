@@ -20,8 +20,9 @@
 #
 # CHANGELOG
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
+# 09/24/2012    0.2     Allow for more log files and no restart
 
-__version__ = '0.1'
+__version__ = '0.2'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
 
 import sys
@@ -46,6 +47,11 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
     _restartcount = 0
     _restarttimes = []
     _sched = False
+    _folders = {}
+    _logfiles = {}
+    _folders_count = 0
+    _logfiles_count = 0
+    _restartb3 = True
     
     
     def onLoadConfig(self):
@@ -67,18 +73,35 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self._msg1 = self.config.get('messages', '1min')
         except Exception, err:
             self.error('Error getting restart messages "%s" : %s' % (Exception, err))
-        
+
         try:
-            self._base_dir = self.config.get('logfiles', 'base_dir')
-            self._battleye_dir = self.config.get('logfiles', 'battleye_dir')
-            self._arma_log = self.config.get('logfiles', 'arma_log')
-            self._arma_rpt = self.config.get('logfiles', 'arma_rpt')
-            self._scripts_log = self.config.get('logfiles', 'scripts_log')
-            self._vehicles_log = self.config.get('logfiles', 'vehicles_log')
-            self._execs_log = self.config.get('logfiles', 'execs_log')
+            self._restartb3 = self.config.getboolean('settings', 'restart_b3')
         except Exception, err:
-            self.error('Error getting log file names "%s" : %s' % (Exception, err))
+            self.debug('Error getting Resatrt B3 setting, using default "$s" : %s' % (Exception, err))
+            
+        try:
+            self._folders_count = self.config.getint('logfolders', 'folders_count')
+            if self._folders_count > 0:
+                for fol in range(1, self._folders_count + 1):
+                    self._folders[fol] = os.path.normpath(self.config.get('logfolders', 'folder_%s' % fol))
+                    self._folders[fol] = self._folders[fol] + '\\'
+                    
+                self._logfiles_count = self.config.getint('logfiles', 'logfiles_count')
+                
+                for fil in range(1, self._logfiles_count + 1):
+                    self._logfiles[fil] = self.config.get('logfiles', 'logfile_%s' % fil).split(':')
+        except Exception, err:
+            self.error('Error getting log folder/file names "%s" : %s' % (Exception, err))
         
+        if self._restartb3:
+            self.debug('B3 will be restarted 3 minutes after each server restart')
+        else:
+            self.debug('B3 will NOT be restarted after each server restart')
+            
+        self.debug('Log folders %s' % self._folders)
+        self.debug('Log files %s' % self._logfiles)
+
+
     def onStartup(self):
       
         # get the plugin so we can register commands
@@ -99,7 +122,6 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             func = self.getCmd(cmd)
             if func:
                 self._adminPlugin.registerCommand(self, cmd, level, func, alias)
-            
             
         self.setuptimers()
     
@@ -165,7 +187,8 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
     def sendRestartserver(self):
         self.console.say('Server is shutting down immediately')
         self.console.write(self.console.getCommand('shutdown', ))
-        self.setUpcrontab(3, 'sendRestart_bot')
+        if self._restartb3:
+            self.setUpcrontab(1, 'sendRestart_bot')
         self._sched = False
         time.sleep(10)
         self.renamelogs()
@@ -220,50 +243,35 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
                 client.message('Invalid parameters, you must supply a valid time, 0, 1, 2 , or 5')
 
     def renamelogs(self):
-        org_gamelog = self._base_dir + self._arma_rpt + '.rpt'
-        org_consolelog = self._base_dir + self._arma_log + '.log'
-        org_scriptslog = self._battleye_dir + self._scripts_log + '.log'
-        org_vehicleslog = self._battleye_dir + self._vehicles_log + '.log'
-        org_execslog = self._battleye_dir + self._execs_log + '.log'
-
-
+        if self._folders_count <= 0:
+            self.info('No files to rename')
+            return
+            
         now = datetime.datetime.today()
-
         str_now = now.strftime("%Y%m%d-%H%M%S")
-
-        new_logdir = self._base_dir + 'logs/' + str_now +'/'
-        new_gamelog = new_logdir + self._arma_rpt + str_now + '.rpt'
-        new_consolelog = new_logdir + self._arma_log + str_now + '.log'
-        new_scriptslog = new_logdir + self._scripts_log + str_now + '.log'
-        new_vehicleslog = new_logdir + self._vehicles_log + '_' + str_now + '.log'
-        new_execslog = new_logdir + self._execs_log + '_' + str_now + '.log'
-
+            
+        new_logdir = self._folders[1] + 'logs/' + str_now +'/'
         try:
             os.mkdir(new_logdir)
         except Exception, err:
             print('Error creating folder "%s" : %s' % (Exception, err))
             return
+            
+        for fil in range(1, self._logfiles_count + 1):
+            org_folder = self._folders[int(self._logfiles[fil][0])]
+            org_file = self._logfiles[fil][1]
+            org_log =  org_folder + org_file
+            self.debug('Original log file %s' % org_log)
+            filename, extension = org_file.split('.')
+            new_log = new_logdir + filename + str_now + '.' + extension
         
-        try:
-            os.rename(org_gamelog, new_gamelog)
-        except Exception, err:
-            self.error('Error renamimg Gamelog "%s" : %s' % (Exception, err))
-        try:
-            os.rename(org_consolelog, new_consolelog)
-        except Exception, err:
-            self.error('Error renamimg Consolelog "%s" : %s' % (Exception, err))
-        try:
-            os.rename(org_scriptslog, new_scriptslog)
-        except Exception, err:
-            self.error('Error renamimg Scriptslog "%s" : %s' % (Exception, err))
-        try:
-            os.rename(org_vehicleslog, new_vehicleslog)
-        except Exception, err:
-            self.error('Error renamimg Vehicleslog "%s" : %s' % (Exception, err))
-        try:
-            os.rename(org_execslog, new_execslog)
-        except Exception, err:
-            self.error('Error renamimg Execlog "%s" : %s' % (Exception, err))
+            try:
+                self.debug('Renameing %s to %s' % (org_log, new_log))
+                os.rename(org_log, new_log)
+            except Exception, err:
+                self.error('Error renamimg log %s to %s :"%s" : %s' % (org_log, new_log, Exception, err))
+        
+
     
                 
                 
