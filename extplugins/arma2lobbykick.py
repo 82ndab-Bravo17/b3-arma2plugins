@@ -92,6 +92,7 @@ class Arma2LobbykickPlugin(b3.plugin.Plugin):
                         if lobbytime >= self._maxlobbytime and cl.maxLevel < self._adminlobbyignore:
                             self.debug('Kick player %s' % cl.name)
                             cl.kick(self._kick_message, 'afk', None)
+                            del self._playersinlobby[cid]
 
                     else:
                         # Different player with same cid
