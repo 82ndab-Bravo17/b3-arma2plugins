@@ -20,8 +20,9 @@
 #
 # CHANGELOG
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
+# 02/12/2013    0.2     loadbattleyescripts mow loads all scripts files, including those considered to be event files
 
-__version__ = '0.1'
+__version__ = '0.2'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
 
 import sys
@@ -83,11 +84,14 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
         Handle intercepted events
         """
    
-    def cmd_loadscripts(self, data, client=None, cmd=None):
+    def cmd_loadbattleyescripts(self, data, client=None, cmd=None):
             self.console.write(('loadscripts', ))
-            
-    def cmd_loadevents(self, data, client=None, cmd=None):
             self.console.write(('loadevents', ))
+            client.message('All Script files have been reloaded')
+            
+    def cmd_loadbattleyeevents(self, data, client=None, cmd=None):
+            self.console.write(('loadevents', ))
+            client.message('All Event Script files have been reloaded')
 
 if __name__ == '__main__':
     from b3.fake import fakeConsole
