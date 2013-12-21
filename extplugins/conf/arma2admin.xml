@@ -2,5 +2,13 @@
 	<settings name="commands">
 		<set name="loadbattleyescripts">60</set>
 		<set name="loadbattleyeevents">60</set>
+		<set name="mission">60</set>
+		<set name="listmissions">60</set>
+		<set name="missionsscreen">60</set>
+		<set name="restartmission">60</set>
+		<set name="reassignroles">60</set>
+		<set name="servermonitor">60</set>
+		<set name="missionlike">60</set>
+		
 	</settings>
 </configuration>

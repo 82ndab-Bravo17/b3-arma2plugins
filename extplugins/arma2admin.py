@@ -21,8 +21,9 @@
 # CHANGELOG
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
 # 02/12/2013    0.2     loadbattleyescripts mow loads all scripts files, including those considered to be event files
+# 21/12/2013    0.3     Added mission changing/Server restart commands
 
-__version__ = '0.2'
+__version__ = '0.3'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
 
 import sys
@@ -33,6 +34,7 @@ import random
 import b3.events
 import b3.plugin
 import string
+import re
 from b3 import functions
 from b3.functions import getModule
 
@@ -41,6 +43,8 @@ from b3.functions import getModule
 
 #--------------------------------------------------------------------------------------------------
 class Arma2AdminPlugin(b3.plugin.Plugin):
+    
+    _mission_list = {}
     
     def onStartup(self):
       
@@ -85,13 +89,120 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
         """
    
     def cmd_loadbattleyescripts(self, data, client=None, cmd=None):
-            self.console.write(('loadscripts', ))
-            self.console.write(('loadevents', ))
-            client.message('All Script files have been reloaded')
+        self.console.write(('loadscripts', ))
+        self.console.write(('loadevents', ))
+        client.message('All Script files have been reloaded')
             
     def cmd_loadbattleyeevents(self, data, client=None, cmd=None):
-            self.console.write(('loadevents', ))
-            client.message('All Event Script files have been reloaded')
+        self.console.write(('loadevents', ))
+        client.message('All Event Script files have been reloaded')
+            
+    def cmd_mission(self, data, client=None, cmd=None):
+        if not data:
+            client.message('You Need to give the name or number of the mission that you want to run')
+            return
+            
+        self._mission_list = self.get_missionlist()
+        
+        if data in self._mission_list.values():
+            self.console.write(self.console.getCommand('mission', missionname=data))
+        elif data in self._mission_list.keys():
+            missionname = self._mission_list[data]
+            self.console.write(self.console.getCommand('mission', missionname=missionname))
+        
+        else:
+            client.message('Mission %s does not exist' % data)
+            
+    def cmd_missionsscreen(self, data, client=None, cmd=None):
+        self.console.write(self.console.getCommand('missionsscreen', ))
+            
+    def cmd_restartmission(self, data, client=None, cmd=None):
+        self.console.write(self.console.getCommand('restartmission', ))
+            
+    def cmd_reassignroles(self, data, client=None, cmd=None):
+        self.console.write(self.console.getCommand('reassignroles', ))
+            
+    def cmd_servermonitor(self, data, client=None, cmd=None):
+        if data.lower() == "off":
+            self.console.write(self.console.getCommand('servermonitoroff', ))
+        else:
+            self.console.write(self.console.getCommand('servermonitoron', ))
+        
+    def cmd_listmissions(self, data, client=None, cmd=None):
+        self._mission_list = self.get_missionlist()
+        for x in xrange (1, len(self._mission_list)+1):
+            try:
+                msg = ('%s - %s' % (x, self._mission_list[str(x)]))
+                client.message(msg)
+            except KeyError, err:
+                pass
+            except:
+                raise
+            
+    def cmd_missionlike(self, data, client=None, cmd=None):
+        if not data:
+            client.message('You Need to give a part of the name of the mission that you want to run')
+            return
+            
+        match = re.search(r'^(?P<partial_name>.+)\s(?P<partial_mission_no>[0-9]+)$', data)
+        if match:
+            c = match.groupdict()
+            partial_name = c['partial_name'].lower()
+            partial_mission_no = c['partial_mission_no']
+        else:
+            partial_name = data.lower()
+            partial_mission_no = ''
+
+        mission_partial_list = {}
+        self._mission_list = self.get_missionlist()
+        i = 1
+        for mission_name in self._mission_list.values():
+
+            if mission_name.lower().find(partial_name) != -1:
+                mission_partial_list[str(i)] = mission_name
+                i += 1
+                
+        if len(mission_partial_list) < 1:
+            client.message('No missions match that partial name')
+            return
+            
+        if partial_mission_no != '':
+            if partial_mission_no in mission_partial_list.keys():
+                missionname = mission_partial_list[partial_mission_no]
+                self.console.write(self.console.getCommand('mission', missionname=missionname))
+            else:
+                client.message('That is not a valid number for the mission selection')
+        else:
+            for x in xrange (1, len(mission_partial_list)+1):
+                try:
+                    msg = ('%s - %s' % (x, mission_partial_list[str(x)]))
+                    client.message(msg)
+                except KeyError, err:
+                    pass
+                except:
+                    raise
+            
+    def get_missionlist(self):
+        missions = {}
+        try:
+            missions = self.console.write(self.console.getCommand('listmissions', )).splitlines()
+        except AttributeError, err:
+            if missions is None:
+                return missions
+            else:
+                raise
+        except:
+            raise
+            
+        i = 0
+        mission_dict = {}
+        for mission in missions:
+            if i > 0:
+                mission_dict[str(i)] = mission.rpartition('.pbo')[0]
+            i += 1
+        
+        return mission_dict
+
 
 if __name__ == '__main__':
     from b3.fake import fakeConsole
