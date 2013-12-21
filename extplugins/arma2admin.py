@@ -124,9 +124,9 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
             
     def cmd_servermonitor(self, data, client=None, cmd=None):
         if data.lower() == "off":
-            self.console.write(self.console.getCommand('servermonitoroff', ))
+            self.console.write(self.console.getCommand('servermonitor', onoff='0'))
         else:
-            self.console.write(self.console.getCommand('servermonitoron', ))
+            self.console.write(self.console.getCommand('servermonitor', onoff='1'))
         
     def cmd_listmissions(self, data, client=None, cmd=None):
         self._mission_list = self.get_missionlist()
@@ -183,23 +183,24 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                     raise
             
     def get_missionlist(self):
-        missions = {}
+        mission_dict = {}
+        missions = None
         try:
             missions = self.console.write(self.console.getCommand('listmissions', )).splitlines()
         except AttributeError, err:
             if missions is None:
-                return missions
+                return mission_dict
             else:
                 raise
         except:
             raise
             
-        i = 0
+        i = 1
         mission_dict = {}
         for mission in missions:
-            if i > 0:
+            if mission.strip().endswith('.pbo'):
                 mission_dict[str(i)] = mission.rpartition('.pbo')[0]
-            i += 1
+                i += 1
         
         return mission_dict
 
