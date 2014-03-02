@@ -22,8 +22,9 @@
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
 # 02/12/2013    0.2     loadbattleyescripts mow loads all scripts files, including those considered to be event files
 # 21/12/2013    0.3     Added mission changing/Server restart commands
+# 02/03/2014    0.4     Added captureframe and loadbans
 
-__version__ = '0.3'
+__version__ = '0.4'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
 
 import sys
