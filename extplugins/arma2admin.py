@@ -45,6 +45,7 @@ from b3.functions import getModule
 class Arma2AdminPlugin(b3.plugin.Plugin):
     
     _mission_list = {}
+    _be_path = None
     
     def onStartup(self):
       
@@ -68,6 +69,16 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                     self._adminPlugin.registerCommand(self, cmd, level, func, alias)
                 else:
                     self.error('Could not find method %s' % cmd)
+                    
+        if self.config.has_option('settings','bepath'):
+            self._be_path = self.config.get('settings','bepath')
+            if self._be_path == "":
+                self._be_path = None
+                self.error('Config error: bepath is empty')
+            else:
+                if not os.path.isdir(self._be_path):
+                    self._be_path = None
+                    self.error('Config error: bepath is not a directory')
             
     
     def onEvent(self, event):
@@ -85,19 +96,28 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
 
     def onEvent(self, event):
         """\
-        Handle intercepted events
+        Handle intercepted events.
         """
    
     def cmd_loadbattleyescripts(self, data, client=None, cmd=None):
+        """\
+        Reloads all battleye script and event files.
+        """
         self.console.write(('loadscripts', ))
         self.console.write(('loadevents', ))
         client.message('All Script files have been reloaded')
             
     def cmd_loadbattleyeevents(self, data, client=None, cmd=None):
+        """\
+        Reloads all battleye event files.
+        """
         self.console.write(('loadevents', ))
         client.message('All Event Script files have been reloaded')
             
     def cmd_mission(self, data, client=None, cmd=None):
+        """\
+        Starts the named mission, or optionally can run a mission by a number obtained from the !listmissions command.
+        """
         if not data:
             client.message('You Need to give the name or number of the mission that you want to run')
             return
@@ -114,21 +134,40 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
             client.message('Mission %s does not exist' % data)
             
     def cmd_missionsscreen(self, data, client=None, cmd=None):
+        """\
+        send the server back to the mission selection screen.
+        """
         self.console.write(self.console.getCommand('missionsscreen', ))
             
     def cmd_restartmission(self, data, client=None, cmd=None):
+        """\
+        Restarts the current mission without forcing the re-assigning of roles.
+        """
         self.console.write(self.console.getCommand('restartmission', ))
             
     def cmd_reassignroles(self, data, client=None, cmd=None):
+        """\
+        Restarts the current mission including assignment of roles.
+        """
         self.console.write(self.console.getCommand('reassignroles', ))
             
     def cmd_servermonitor(self, data, client=None, cmd=None):
+        """\
+        turns server monitor on or off. Note: have to be logged in on server as admin to see the output, so not really much use but included for completeness.
+        """
         if data.lower() == "off":
             self.console.write(self.console.getCommand('servermonitor', onoff='0'))
         else:
             self.console.write(self.console.getCommand('servermonitor', onoff='1'))
+            
+    def cmd_captureframe(self, data, client=None, cmd=None):
+        self.console.write(('#captureFrame', ))
+        
         
     def cmd_listmissions(self, data, client=None, cmd=None):
+        """\
+        Lists all the missions on the server. Will only list .pbo files, not folders. Gives each mission a number that can be used by !mission.
+        """
         self._mission_list = self.get_missionlist()
         for x in xrange (1, len(self._mission_list)+1):
             try:
@@ -140,6 +179,9 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                 raise
             
     def cmd_missionlike(self, data, client=None, cmd=None):
+        """\
+        Returns a list of missions that match a pattern, and can run the mission if the mission number is given.
+        """
         if not data:
             client.message('You Need to give a part of the name of the mission that you want to run')
             return
@@ -183,6 +225,9 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                     raise
             
     def get_missionlist(self):
+        """\
+        Retrieves the list of missions on the server.
+        """
         mission_dict = {}
         missions = None
         try:
@@ -204,7 +249,26 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
         
         return mission_dict
 
+    def cmd_loadbans(self, data, client=None, cmd=None):
+        """\
+        Reloads the ban lists.
+        """
+        if not data:
+            data = 'bans'
+        banfiles = data.split()
+        for banfile in banfiles:
+            banfilename = banfile + '.txt'
+            if self._be_path:
+                if os.path.isfile(os.path.join(self._be_path, banfilename)):
+                    client.message('Loading bans from %s' % banfilename)
+                    self.console.write(('loadbans', banfilename))
+                else:
+                    client.message('Banfile does not exist: %s' % banfilename)
+            else:
+                client.message('Attempting to load bans from %s, but unable to confirm that it exists since bepath is not set' % banfilename)
+                self.console.write(('loadbans', banfilename))
 
+        
 if __name__ == '__main__':
     from b3.fake import fakeConsole
     import time

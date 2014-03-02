@@ -9,6 +9,11 @@
 		<set name="reassignroles">60</set>
 		<set name="servermonitor">60</set>
 		<set name="missionlike">60</set>
+		<set name="captureframe">60</set>
+		<set name="loadbans">60</set>
 		
+	</settings>
+	<settings name="settings">
+		<set name="bepath"></set>
 	</settings>
 </configuration>
