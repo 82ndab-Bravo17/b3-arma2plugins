@@ -40,6 +40,8 @@ Here are 3 completed Arma 2 & 3 plugins:
 
 Place the plugins in the extplugins folder and the xmls in the extplugins/conf folder, then add:
 
+(downloaded readme has the lines here, html apparently removes them)
+
 <plugin name="arma2admin" config="@b3/extplugins/conf/arma2admin.xml"/>
 <plugin name="arma2lobbykick" config="@b3/extplugins/conf/arma2lobbykick.xml"/>
 <plugin name="arma2restarts" config="@b3/extplugins/conf/arma2restarts.xml"/>
