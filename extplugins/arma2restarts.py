@@ -20,7 +20,9 @@
 #
 # CHANGELOG
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
-# 09/24/2012    0.2     Allow for more log files and no restart
+# 12/08/2014    0.2     82ndab-Bravo17 
+#       Allow for * wildcard character in log file names, for Arma 3 .rpt and server log files
+#       Allow for zero planned restarts
 
 __version__ = '0.2'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
@@ -58,9 +60,10 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         try:
             self._restartcount = self.config.getint('timers', 'no_restarts')
             self.debug('No of restarts : %s' % self._restartcount)
-            for rs in range(1, self._restartcount + 1):
-                self._restarttimes.append(self.config.get('timers', 'restarttime_%s' % rs))
-                self.debug('Restart %s : %s' % (rs, self._restarttimes[rs-1]))
+            if self._restartcount > 0:
+                for rs in range(1, self._restartcount + 1):
+                    self._restarttimes.append(self.config.get('timers', 'restarttime_%s' % rs))
+                    self.debug('Restart %s : %s' % (rs, self._restarttimes[rs-1]))
         except Exception, err:
             self.error('Error getting restart times "%s" : %s' % (Exception, err))
         
@@ -83,8 +86,7 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self._folders_count = self.config.getint('logfolders', 'folders_count')
             if self._folders_count > 0:
                 for fol in range(1, self._folders_count + 1):
-                    self._folders[fol] = os.path.normpath(self.config.get('logfolders', 'folder_%s' % fol))
-                    self._folders[fol] = self._folders[fol] + '\\'
+                    self._folders[fol] = self.config.get('logfolders', 'folder_%s' % fol)
                     
                 self._logfiles_count = self.config.getint('logfiles', 'logfiles_count')
                 
@@ -123,7 +125,8 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             if func:
                 self._adminPlugin.registerCommand(self, cmd, level, func, alias)
             
-        self.setuptimers()
+        if self._restartcount > 0:
+            self.setuptimers()
     
     def onEvent(self, event):
         pass
@@ -188,7 +191,7 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         self.console.say('Server is shutting down immediately')
         self.console.write(self.console.getCommand('shutdown', ))
         if self._restartb3:
-            self.setUpcrontab(1, 'sendRestart_bot')
+            self.setUpcrontab(3, 'sendRestart_bot')
         self._sched = False
         time.sleep(10)
         self.renamelogs()
@@ -248,7 +251,7 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             return
             
         now = datetime.datetime.today()
-        str_now = now.strftime("%Y%m%d-%H%M%S")
+        str_now = '_' + now.strftime("%Y%m%d-%H%M%S")
             
         new_logdir = self._folders[1] + 'logs/' + str_now +'/'
         try:
@@ -260,16 +263,33 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         for fil in range(1, self._logfiles_count + 1):
             org_folder = self._folders[int(self._logfiles[fil][0])]
             org_file = self._logfiles[fil][1]
-            org_log =  org_folder + org_file
-            self.debug('Original log file %s' % org_log)
-            filename, extension = org_file.split('.')
-            new_log = new_logdir + filename + str_now + '.' + extension
+            if '*' in org_file:
+                self.rename_wildcard_files(org_file, org_folder, str_now, new_logdir)
+            else:
+                self.rename_single_file(org_file, org_folder, str_now, new_logdir)
+                
+                
+    def rename_wildcard_files(self, org_file, org_folder, str_now, new_logdir):
+        filename, extension = org_file.split('.')
+        filename = filename.rsplit('*')[0]
+        file_list = os.listdir(org_folder)
+        for file in file_list:
+            if file.startswith(filename) and file.endswith(extension):
+                self.rename_single_file(file, org_folder, str_now, new_logdir)
         
-            try:
-                self.debug('Renameing %s to %s' % (org_log, new_log))
-                os.rename(org_log, new_log)
-            except Exception, err:
-                self.error('Error renamimg log %s to %s :"%s" : %s' % (org_log, new_log, Exception, err))
+                
+                
+                
+    def rename_single_file(self, org_file, org_folder, str_now, new_logdir):
+        org_log =  org_folder + org_file
+        self.debug('Original log file %s' % org_log)
+        filename, extension = org_file.split('.')
+        new_log = new_logdir + filename + str_now + '.' + extension
+        try:
+            self.debug('Renameing %s to %s' % (org_log, new_log))
+            os.rename(org_log, new_log)
+        except Exception, err:
+            self.error('Error renamimg log %s to %s :"%s" : %s' % (org_log, new_log, Exception, err))
         
 
     
