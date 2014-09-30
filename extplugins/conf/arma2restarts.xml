@@ -23,23 +23,25 @@
 	<!-- 
 	Set up the folders that contain the log files below, folder_1 needs to be the folder that contains a subfolder called logs
 	that the old log files will be copied to.
+	Remember to use a trailing /.
 	Set folders_count to 0 to disable log renaming.
 	-->
 	<settings name="logfolders">
 		<set name="folders_count">2</set>
-		<set name="folder_1">C:/</set>
-		<set name="folder_2">C:/</set>
+		<set name="folder_1">C:/yourfoldernamehere/</set>
+		<set name="folder_2">C:/yourotherfoldernamehere/</set>
 	</settings>
 	<!--
 	Enter the log file names below, using the folders from the section above in the format 2:filename.ext.
 	This will reference a file called filename.ext in the folder referenced by folder_2 above.
+	* can be used as a wildcard for the new Arma 3 logs that change name each restart
 	-->
 	<settings name="logfiles">
 		<set name="logfiles_count">5</set>
-		<set name="logfile_1">1:server_console.log</set>
+		<set name="logfile_1">1:server_console*.log</set>
 		<set name="logfile_2">2:scripts.log</set>
 		<set name="logfile_3">2:createvehicle.log</set>
 		<set name="logfile_4">2:remoteexec.log</set>
-		<set name="logfile_5">1:arma2oaserver.rpt</set>
+		<set name="logfile_5">1:arma2oaserver*.rpt</set>
 	</settings>
 </configuration>
