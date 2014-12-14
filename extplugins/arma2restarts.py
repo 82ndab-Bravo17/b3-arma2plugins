@@ -21,10 +21,11 @@
 # CHANGELOG
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
 # 12/08/2014    0.2     82ndab-Bravo17 
-#       Allow for * wildcard character in log file names, for Arma 3 .rpt and server log files
-#       Allow for zero planned restarts
+#                       Allow for * wildcard character in log file names, for Arma 3 .rpt and server log files
+#                       Allow for zero planned restarts
+# 12/14/2014    0.3     Give firts restart warning at 15 minutes prior
 
-__version__ = '0.2'
+__version__ = '0.3'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
 
 import sys
@@ -68,9 +69,11 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self.error('Error getting restart times "%s" : %s' % (Exception, err))
         
         try:
+            self._msgSched15 = self.config.get('messages', 'sched15min')
             self._msgSched5 = self.config.get('messages', 'sched5min')
             self._msgSched2 = self.config.get('messages', 'sched2min')
             self._msgSched1 = self.config.get('messages', 'sched1min')
+            self._msg15 = self.config.get('messages', '15min')
             self._msg5 = self.config.get('messages', '5min')
             self._msg2 = self.config.get('messages', '2min')
             self._msg1 = self.config.get('messages', '1min')
@@ -151,7 +154,7 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             if rshour < 0:
                 rshour += 24
             rsmin = int(rmin)
-            rsmin -= 5
+            rsmin -= 15
             if rsmin < 0:
                 rsmin += 60 
                 rshour -= 1
@@ -164,7 +167,14 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
     def schedule_restart(self):
         self.debug("Starting shutdown sequence")
         self._sched = True
-        self.sendRestartmessage_5()
+        self.sendRestartmessage_15()
+
+    def sendRestartmessage_15(self):
+        if self._sched:
+            self.console.say(self._msgSched15)
+        else:
+            self.console.say(self._msg15)
+        self.setUpcrontab(10, 'sendRestartmessage_5')	
         
     def sendRestartmessage_5(self):
         if self._sched:
@@ -271,15 +281,18 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
                 
     def rename_wildcard_files(self, org_file, org_folder, str_now, new_logdir):
         filename, extension = org_file.split('.')
-        filename = filename.rsplit('*')[0]
-        file_list = os.listdir(org_folder)
-        for file in file_list:
-            if file.startswith(filename) and file.endswith(extension):
-                self.rename_single_file(file, org_folder, str_now, new_logdir)
-        
-                
-                
-                
+        if filename == '*':
+            file_list = os.listdir(org_folder)
+            for file in file_list:
+                if file.endswith(extension):
+                    self.rename_single_file(file, org_folder, str_now, new_logdir)
+        else:
+            filename = filename.split('*')[0]
+            file_list = os.listdir(org_folder)
+            for file in file_list:
+                if file.startswith(filename) and file.endswith(extension):
+                    self.rename_single_file(file, org_folder, str_now, new_logdir)
+
     def rename_single_file(self, org_file, org_folder, str_now, new_logdir):
         org_log =  org_folder + org_file
         self.debug('Original log file %s' % org_log)
