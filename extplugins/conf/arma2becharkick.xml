@@ -1,0 +1,5 @@
+<configuration plugin="arma2becharkick">
+	<settings name="settings">
+		<set name="kick_message">Please remove all %s characters from your name.</set>
+	</settings>
+</configuration>
