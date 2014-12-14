@@ -10,10 +10,12 @@
 		<set name="servermonitor">60</set>
 		<set name="missionlike">60</set>
 		<set name="captureframe">60</set>
-		<set name="loadbans">60</set>
-		
+		<set name="logentities">60</set>
+		<set name="auto_update">60</set>
 	</settings>
 	<settings name="settings">
-		<set name="bepath"></set>
+		<set name="bepath">BattlEye</set>
+		<set name="filters_list">publicvariable</set>
+        <set name="auto_update">Yes</set>
 	</settings>
 </configuration>

@@ -23,8 +23,9 @@
 # 02/12/2013    0.2     loadbattleyescripts mow loads all scripts files, including those considered to be event files
 # 21/12/2013    0.3     Added mission changing/Server restart commands
 # 02/03/2014    0.4     Added captureframe and loadbans
+# 12/12/2014    0.5     Added auto-update of BE filters option and command to turn it on/off
 
-__version__ = '0.4'
+__version__ = '0.5'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
 
 import sys
@@ -34,8 +35,10 @@ import os
 import random
 import b3.events
 import b3.plugin
+import b3.cron
 import string
 import re
+import zlib
 from b3 import functions
 from b3.functions import getModule
 
@@ -47,10 +50,13 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
     
     _mission_list = {}
     _be_path = None
-    
+    _cronTab = None
+    _filters_list = {}
+    _badnamechars = "|%^&*#@!"
+
     def onStartup(self):
       
-        # get the plugin so we can register commands
+        # get the admin plugin so we can register commands
         self._adminPlugin = self.console.getPlugin('admin')
         if not self._adminPlugin:
             # something is wrong, can't start without admin plugin
@@ -80,8 +86,29 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                 if not os.path.isdir(self._be_path):
                     self._be_path = None
                     self.error('Config error: bepath is not a directory')
+
+        self.info('BE path is set to %s' % self._be_path)
             
-    
+        if self.config.has_option('settings', 'filters_list'):
+            filters_list = self.config.get('settings', 'filters_list').split(',')
+            if len(filters_list) != 0:
+                for filter in filters_list:
+                    self._filters_list[filter] = None
+                    self.info('Filter %s is in the auto update list' % filter)
+                    
+        auto_update = False
+        if self.config.has_option('settings', 'auto_update'):
+            auto_update = self.config.getboolean('settings', 'auto_update')
+            if auto_update:
+                if self._be_path == None:
+                    self.error('You must specify a BE path to use auto updates')
+                else:
+                    self._cronTab = b3.cron.PluginCronTab(self, self.check_filters_crc, second='*/5')
+                    self.console.cron + self._cronTab
+                    self.info('Automatic BE Filter update has been enabled')
+        if not auto_update:    
+            self.info('Automatic BE Filter update is not enabled')
+
     def onEvent(self, event):
         pass
         
@@ -269,7 +296,67 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                 client.message('Attempting to load bans from %s, but unable to confirm that it exists since bepath is not set' % banfilename)
                 self.console.write(('loadbans', banfilename))
 
+    def cmd_auto_update(self, data, client=None, cmd=None):
+        """\
+        Turns on or off the auto-reloading of the BE filters.
+        """
+        if  not data:
+            client.message('Must specify on or off with this command')
+            return
+        if data.lower() == 'off':
+            if self._cronTab:
+                # remove existing crontab
+                self.console.cron - self._cronTab
+            for filter in self._filters_list.keys():
+                self._filter_list[filter] = None
+            self.info('Automatic BE Filter update has been disabled')
+            client.message('Automatic BE Filter update has been disabled')
+            return
+
+        if data.lower() != 'on':
+            client.message('Must specify either on or off with this command')
+            return
+        if self._be_path == None:
+            client.message('You must have a BE path specified in your config file to use auto updates')
+            return
+        if self._cronTab:
+            # remove existing crontab
+            self.console.cron - self._cronTab
+
+        self._cronTab = b3.cron.PluginCronTab(self, self.check_filters_crc, second='*/5')
+        self.console.cron + self._cronTab
+        self.info('Automatic BE Filter update has been enabled')
+        client.message('Automatic BE Filter update has been enabled')
+        self.check_filters_crc()
+
         
+    def check_filters_crc(self):
+        update_needed = False
+        for filter in self._filters_list.keys():
+            fn = filter + '.txt'
+            f = os.path.join(self._be_path, fn)
+            if os.path.isfile(f):
+                newcrc = self.crc32(f)
+                # self.verbose('Filter %s has crc of %s, used to be %s' % (f, newcrc, self._filters_list[filter]))
+                if self._filters_list[filter] != newcrc:
+                    self.info('%s filter has been changed' % filter)
+                    self._filters_list[filter] = newcrc
+                    update_needed = True
+            else:
+                self.verbose('Filter %s does not exist' % f)
+        
+        if update_needed:
+            self.console.write(('loadscripts', ))
+            self.console.write(('loadevents', ))
+            self.info('BE Filters have been reloaded and new crcs stored')
+
+    def crc32(self, fileName):
+        crc = 0
+        with open(fileName,"rb") as f:
+            for Line in f:
+                crc = zlib.crc32(Line, crc)
+        return crc
+
 if __name__ == '__main__':
     from b3.fake import fakeConsole
     import time
