@@ -16,7 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: publist.py 43 2005-12-06 02:17:55Z thorn $
 #
 # CHANGELOG
 # 07/25/2012    0.1     82ndab-Bravo17 Initial release
@@ -46,13 +45,12 @@ from b3.functions import getModule
 
 
 #--------------------------------------------------------------------------------------------------
-class Arma2AdminPlugin(b3.plugin.Plugin):
+class ArmaadminPlugin(b3.plugin.Plugin):
     
     _mission_list = {}
     _be_path = None
     _cronTab = None
     _filters_list = {}
-    _badnamechars = "|%^&*#@!"
 
     def onStartup(self):
       
@@ -93,6 +91,7 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
             filters_list = self.config.get('settings', 'filters_list').split(',')
             if len(filters_list) != 0:
                 for filter in filters_list:
+                    filter = filter.strip()
                     self._filters_list[filter] = None
                     self.info('Filter %s is in the auto update list' % filter)
                     
@@ -141,7 +140,14 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
         """
         self.console.write(('loadevents', ))
         client.message('All Event Script files have been reloaded')
-            
+
+    def cmd_loadbattleyebans(self, data, client=None, cmd=None):
+        """\
+        Reloads all battleye bans from bans.txt.
+        """
+        self.console.write(('loadbans', ))
+        client.message('Bans have been reloaded from Bans.txt')
+
     def cmd_mission(self, data, client=None, cmd=None):
         """\
         Starts the named mission, or optionally can run a mission by a number obtained from the !listmissions command.
@@ -277,7 +283,7 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
         
         return mission_dict
 
-    def cmd_loadbans(self, data, client=None, cmd=None):
+    def cmd_loadbattleyebans(self, data, client=None, cmd=None):
         """\
         Reloads the ban lists.
         """
@@ -329,7 +335,14 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
         client.message('Automatic BE Filter update has been enabled')
         self.check_filters_crc()
 
-        
+    def cmd_lock_server(self, data, client=None, cmd=None):
+        self.console.write(self.console.getCommand('lockserver', ))
+        client.message('Server has been locked.')
+
+    def cmd_unlock_server(self, data, client=None, cmd=None):
+        self.console.write(self.console.getCommand('unlockserver', ))
+        client.message('Server has been unlocked.')
+
     def check_filters_crc(self):
         update_needed = False
         for filter in self._filters_list.keys():
@@ -357,67 +370,3 @@ class Arma2AdminPlugin(b3.plugin.Plugin):
                 crc = zlib.crc32(Line, crc)
         return crc
 
-if __name__ == '__main__':
-    from b3.fake import fakeConsole
-    import time
-    
-    from b3.config import XmlConfigParser
-    
-    conf = XmlConfigParser()
-    conf.setXml("""
-    <configuration plugin="publist">
-        <settings name="settings">
-            <set name="urlsqdf">http://test.somewhere.com/serverping.php</set>
-            <set name="url">http://localhost/b3publist/serverping.php</set>
-            <set name="delay">30</set>
-        </settings>
-    </configuration>
-    """)
-
-    
-    
-    def test_startup():
-        p._initial_heartbeat_delay = 10
-        p.onStartup()
-        time.sleep(5)
-        print "_heartbeat_sent : %s" % p._heartbeat_sent
-        time.sleep(20)
-        print "_heartbeat_sent : %s" % p._heartbeat_sent
-        fakeConsole.queueEvent(b3.events.Event(b3.events.EVT_STOP, None, None))
-        #p.update()
-    
-    def test_crontab():
-        def myUpdate():
-            p.sendInfo({'version': '1.4.1b', 
-                'os': 'nt', 
-                'action': 'fake', 
-                'ip': '212.7.205.31', 
-                'parser': 'bfbc2', 
-                'plugins': 'censorurt/0.1.2,admin/1.8.2,publist/1.7.1,poweradminurt/1.5.7,tk/1.2.4,adv/1.2.2', 
-                'port': 19567, 
-                'parserversion': 'x.x.x', 
-                'rconPort': 48888,
-                'python_version': 'publist test',
-                'serverDescription': 'publist plugin test|from admin: Courgette|email: courgette@bigbrotherbot.net| visit our web site : www.bigbrotherbot.net',
-                'bannerUrl': 'http://www.lowpinggameservers.com/i/bc2.jpg',
-                'default_encoding': sys.getdefaultencoding()
-                })
-        p._cronTab = b3.cron.PluginCronTab(p, myUpdate, second='*/10')
-        p.console.cron + p._cronTab
-        
-    
-    #fakeConsole._publicIp = '127.0.0.1'
-    fakeConsole._publicIp = '11.22.33.44'
-    p = PublistPlugin(fakeConsole, conf)
-    p.onLoadConfig()
-    
-    #test_heartbeat()
-    #test_heartbeat_local_urt()
-    #test_heartbeat_b3_bfbc2()
-    test_heartbeat_homefront()
-    #test_crontab()
-    
-    time.sleep(120) # so we can see thread working
-
-    #p.sendInfo({'action' : 'shutdown', 'ip' : '91.121.95.52', 'port' : 27960, 'rconPort' : None })
-    

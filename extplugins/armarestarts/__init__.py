@@ -23,7 +23,7 @@
 # 12/08/2014    0.2     82ndab-Bravo17 
 #                       Allow for * wildcard character in log file names, for Arma 3 .rpt and server log files
 #                       Allow for zero planned restarts
-# 12/14/2014    0.3     Give firts restart warning at 15 minutes prior
+# 12/14/2014    0.3     Give first restart warning at 15 minutes prior
 
 __version__ = '0.3'
 __author__  = 'ThorN, Courgette, 82ndab-Bravo17'
@@ -44,36 +44,36 @@ from b3.functions import getModule
 
 
 #--------------------------------------------------------------------------------------------------
-class Arma2RestartsPlugin(b3.plugin.Plugin):
+class ArmarestartsPlugin(b3.plugin.Plugin):
     _cronTab = []
     _shortcronTab = None
-    _restartcount = 0
-    _restarttimes = []
+    _restarttimes = {}
     _sched = False
     _folders = {}
     _logfiles = {}
     _folders_count = 0
     _logfiles_count = 0
     _restartb3 = True
-    
+    _lockserver = False
     
     def onLoadConfig(self):
         try:
-            self._restartcount = self.config.getint('timers', 'no_restarts')
-            self.debug('No of restarts : %s' % self._restartcount)
-            if self._restartcount > 0:
-                for rs in range(1, self._restartcount + 1):
-                    self._restarttimes.append(self.config.get('timers', 'restarttime_%s' % rs))
-                    self.debug('Restart %s : %s' % (rs, self._restarttimes[rs-1]))
+            if 'timers' in self.config.sections():
+                for rs in self.config.options('timers'):
+                    self._restarttimes[rs] = self.config.get('timers', rs)
+                    self.debug('Restart %s : %s' % (rs, self._restarttimes[rs]))
+                self.debug('No of restarts : %s' % len(self._restarttimes))
         except Exception, err:
             self.error('Error getting restart times "%s" : %s' % (Exception, err))
         
         try:
             self._msgSched15 = self.config.get('messages', 'sched15min')
+            self._msgSched10 = self.config.get('messages', 'sched10min')
             self._msgSched5 = self.config.get('messages', 'sched5min')
             self._msgSched2 = self.config.get('messages', 'sched2min')
             self._msgSched1 = self.config.get('messages', 'sched1min')
             self._msg15 = self.config.get('messages', '15min')
+            self._msg10 = self.config.get('messages', '10min')
             self._msg5 = self.config.get('messages', '5min')
             self._msg2 = self.config.get('messages', '2min')
             self._msg1 = self.config.get('messages', '1min')
@@ -83,32 +83,39 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         try:
             self._restartb3 = self.config.getboolean('settings', 'restart_b3')
         except Exception, err:
-            self.debug('Error getting Resatrt B3 setting, using default "$s" : %s' % (Exception, err))
-            
+            self.debug('Error getting Restart B3 setting, using default "$s" : %s' % (Exception, err))
+        self.debug('B3 will restart server automatically: %s' % self._restartb3)
+
         try:
-            self._folders_count = self.config.getint('logfolders', 'folders_count')
-            if self._folders_count > 0:
-                for fol in range(1, self._folders_count + 1):
-                    self._folders[fol] = self.config.get('logfolders', 'folder_%s' % fol)
-                    
-                self._logfiles_count = self.config.getint('logfiles', 'logfiles_count')
-                
-                for fil in range(1, self._logfiles_count + 1):
-                    self._logfiles[fil] = self.config.get('logfiles', 'logfile_%s' % fil).split(':')
+            self._lockserver = self.config.getboolean('settings', 'lock_server')
+        except Exception, err:
+            self.debug('Error gettingLock Server setting, using default "$s" : %s' % (Exception, err))
+        self.debug('B3 will lock server before restart: %s' %  self._lockserver)
+
+        try:
+            if 'logfolders' in self.config.sections():
+                for fol in self.config.options('logfolders'):
+                    self._folders[fol] = self.config.getpath('logfolders', fol)
+
+                if 'logfiles' in self.config.sections():
+                    for fil_no in self.config.options('logfiles'):
+                        file, folder = self.config.get('logfiles', fil_no).split(',')
+                        self._logfiles[fil_no] = (file, folder)
+
         except Exception, err:
             self.error('Error getting log folder/file names "%s" : %s' % (Exception, err))
-        
+
         if self._restartb3:
             self.debug('B3 will be restarted 3 minutes after each server restart')
         else:
             self.debug('B3 will NOT be restarted after each server restart')
-            
+
         self.debug('Log folders %s' % self._folders)
         self.debug('Log files %s' % self._logfiles)
 
 
     def onStartup(self):
-      
+
         # get the plugin so we can register commands
         self._adminPlugin = self.console.getPlugin('admin')
         if not self._adminPlugin:
@@ -127,26 +134,27 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             func = self.getCmd(cmd)
             if func:
                 self._adminPlugin.registerCommand(self, cmd, level, func, alias)
-            
-        if self._restartcount > 0:
+
+        if len(self._restarttimes) > 0:
             self.setuptimers()
-    
+
     def onEvent(self, event):
         pass
         
     def setuptimers(self):
-    
+
         current_time = time.time()
         local_time = time.localtime(current_time)
         self.debug('local time is %s' % local_time)
         gmt_time = time.gmtime(current_time)
         self.debug('GMT time is %s' % gmt_time)
-        
+
         time_diff = gmt_time.tm_hour - local_time.tm_hour
-        
+
         self.debug('Time diff is %s' % time_diff)
-        
-        for rs in range(0, self._restartcount):
+        rs_number = -1
+        for rs in self._restarttimes.keys():
+            rs_number += 1
             rhour, sep, rmin = self._restarttimes[rs].partition(':')
             rshour = int(rhour) + time_diff
             if rshour >= 24:
@@ -160,10 +168,12 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
                 rshour -= 1
                 if rshour < 0:
                     rshour += 24
-            self.debug("Server will restart at %02d:%02d every day" % (rshour,rsmin))
+            self.debug("Server restart process will start at %02d:%02d GMT every day" % (rshour,rsmin))
             self._cronTab.append(b3.cron.PluginCronTab(self, self.schedule_restart, 0, rsmin, rshour, '*', '*', '*'))
-            self.console.cron + self._cronTab[rs]
-        
+            self.console.cron + self._cronTab[rs_number]
+        # This is needed in case the server doesn't restart after it has been locked for the restart
+        self.setUpcrontab(2, 'unlock_server')
+
     def schedule_restart(self):
         self.debug("Starting shutdown sequence")
         self._sched = True
@@ -174,14 +184,24 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             self.console.say(self._msgSched15)
         else:
             self.console.say(self._msg15)
-        self.setUpcrontab(10, 'sendRestartmessage_5')	
-        
+        self.setUpcrontab(5, 'sendRestartmessage_10')
+
+    def sendRestartmessage_10(self):
+        if self._sched:
+            self.console.say(self._msgSched10)
+        else:
+            self.console.say(self._msg10)
+        self.setUpcrontab(5, 'sendRestartmessage_5')
+
     def sendRestartmessage_5(self):
         if self._sched:
             self.console.say(self._msgSched5)
         else:
             self.console.say(self._msg5)
         self.setUpcrontab(3, 'sendRestartmessage_2')
+        if self._lockserver:
+            self.console.write(self.console.getCommand('lockserver',))
+            self.console.say('Server is locked until after the restart. If you leave you will not be able to rejoin until then.')
             
     def sendRestartmessage_2(self):
         if self._sched:
@@ -196,7 +216,7 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         else:
             self.console.say(self._msg1)
         self.setUpcrontab(1, 'sendRestartserver')
-        
+
     def sendRestartserver(self):
         self.console.say('Server is shutting down immediately')
         self.console.write(self.console.getCommand('shutdown', ))
@@ -205,10 +225,10 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         self._sched = False
         time.sleep(10)
         self.renamelogs()
-        
+
     def sendRestart_bot(self):
         self.console.restart()
-        
+
     def setUpcrontab(self, delay_in_min, func):
         current_min = time.localtime().tm_min
         current_sec = time.localtime().tm_sec
@@ -230,7 +250,9 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
 
         return None
       
-
+    def unlock_server(self):
+        self.console.write(self.console.getCommand('unlockserver',))
+        self.debug('Server has been unlocked.')
 
     def onEvent(self, event):
         """\
@@ -241,7 +263,13 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
         if not data:
             self.sendRestartserver()
         else:
-            if data == '5':
+            if data == '15':
+                self._sched = False
+                self.sendRestartmessage_15()
+            elif data == '10':
+                self._sched = False
+                self.sendRestartmessage_10()
+            elif data == '5':
                 self._sched = False
                 self.sendRestartmessage_5()
             elif data == '2':
@@ -253,26 +281,27 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
             elif data == '0':
                 self.sendRestartserver()
             else:
-                client.message('Invalid parameters, you must supply a valid time, 0, 1, 2 , or 5')
+                client.message('Invalid parameters, you must supply a valid time, 0, 1, 2 , 5, 10 or 15')
 
     def renamelogs(self):
-        if self._folders_count <= 0:
+        if len(self._folders) <= 0:
             self.info('No files to rename')
             return
             
         now = datetime.datetime.today()
         str_now = '_' + now.strftime("%Y%m%d-%H%M%S")
             
-        new_logdir = self._folders[1] + 'logs/' + str_now +'/'
+        new_logdir = self._folders['logs'] + '/logs/' + str_now +'/'
         try:
             os.mkdir(new_logdir)
         except Exception, err:
             print('Error creating folder "%s" : %s' % (Exception, err))
             return
             
-        for fil in range(1, self._logfiles_count + 1):
-            org_folder = self._folders[int(self._logfiles[fil][0])]
-            org_file = self._logfiles[fil][1]
+        for fil in self._logfiles.keys():
+            self.debug('Renaming %s in %s' % (self._logfiles[fil][0],self._logfiles[fil][1] ))
+            org_folder = self._folders[self._logfiles[fil][1]]
+            org_file = self._logfiles[fil][0]
             if '*' in org_file:
                 self.rename_wildcard_files(org_file, org_folder, str_now, new_logdir)
             else:
@@ -294,10 +323,10 @@ class Arma2RestartsPlugin(b3.plugin.Plugin):
                     self.rename_single_file(file, org_folder, str_now, new_logdir)
 
     def rename_single_file(self, org_file, org_folder, str_now, new_logdir):
-        org_log =  org_folder + org_file
+        org_log =  os.path.normpath(org_folder + '/' + org_file)
         self.debug('Original log file %s' % org_log)
         filename, extension = org_file.split('.')
-        new_log = new_logdir + filename + str_now + '.' + extension
+        new_log = os.path.normpath(new_logdir + filename + str_now + '.' + extension)
         try:
             self.debug('Renameing %s to %s' % (org_log, new_log))
             os.rename(org_log, new_log)
